@@ -1,0 +1,14 @@
+#!/bin/bash
+##############################
+#
+#  backup Git repo
+#
+##############################
+
+gitdatadir=/storage/git
+
+echo "Git repo dump start."
+
+tar zcf ${BKUP_PREFIX}gitrepo.tgz $gitdatadir >& /dev/null
+
+echo "Git repo dump end."

@@ -1,0 +1,25 @@
+#!/bin/bash
+##############################
+#
+#  backup Subversion
+#
+##############################
+
+echo "Subversion dump start."
+
+svndatadir=/storage/svn
+bkrepodir=$BKUP_DIR/svnrepo
+if [ ! -d $svnrepodir ]
+then
+   mkdir $svnrepodir
+fi
+
+for rp in `ls $svndatadir/`
+do
+    svnadmin hotcopy $svndatadir/$rp $bkrepodir/$rp
+done
+
+tar zcf ${BKUP_PREFIX}svnrepo.tgz $bkrepodir >& /dev/null
+rm -r $bkrepodir
+
+echo "Subversion dump end."

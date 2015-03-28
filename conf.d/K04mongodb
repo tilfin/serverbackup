@@ -1,0 +1,46 @@
+#!/bin/bash
+##############################
+#
+#  backup MongoDB
+#
+##############################
+
+mongodbdir=/usr/local/mongodb
+mongodump=$mongodbdir/bin/mongodump
+mongo=$mongodbdir/bin/mongo
+
+echo "MongoDB dump start."
+
+##
+## Create dump dir
+##
+mongodumpdir=$BKUP_DIR/mongodb
+if [ ! -d $mongodumpdir ]
+then
+   mkdir $mongodumpdir
+fi
+
+#
+# dumping Database
+#
+echo "Dumping DB begins."
+cd $mongodumpdir
+$mongodump --oplog
+echo "Dumping DB completed."
+
+#
+# tar.gz DB dump
+#
+echo "Archiving DB dump begins."
+cd $mongodumpdir
+tar zcf ${BKUP_PREFIX}mongodump.tgz dump >& /dev/null
+echo "Archiving DB dump completed."
+
+#
+# Delete dump dir
+#
+echo "Delete DB dump files."
+rm -rf $mongodumpdir
+
+echo "MongoDB dump end."
+

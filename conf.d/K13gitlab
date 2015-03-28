@@ -1,0 +1,17 @@
+#!/bin/bash
+##############################
+#
+#  backup Gitlab
+#
+##############################
+
+echo "Gitlab backup start."
+
+sudo -u git -H bundle sh -c "cd ~/gitlab; bundle exec rake gitlab:backup:create RAILS_ENV=production"
+
+created_file=`\ls -t /home/git/gitlab/tmp/backups/ | head -1`
+cp /home/git/gitlab/tmp/backups/$created_file ${BKUP_PREFIX}gitlab.tar
+gzip ${BKUP_PREFIX}gitlab.tar
+
+echo "Gitlab backup end."
+

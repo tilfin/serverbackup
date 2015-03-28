@@ -1,0 +1,108 @@
+#!/bin/bash
+##############################
+#
+#  Backup script
+#
+##############################
+
+BASEDIR=${0%/*}
+
+#
+# Load conf and setup env
+#
+if [ ! -f $BASEDIR/conf ]; then
+  echo "conf not found!"
+  exit 1
+fi
+
+. $BASEDIR/conf
+
+bkupdir=$BackupTmpDir
+logdir=$LogDir
+backupdir=$Folder
+buckets=(`echo $Buckets | tr -s ',' ' '`)
+
+epochsec=`date +"%s"`
+epochday=$((epochsec / 86400))
+dayidx=$((epochday % MaxAge))
+
+bknum=${#buckets[@]}
+bkidx=$((epochday % bknum))
+bucket=${buckets[$bkidx]}
+
+
+#
+# Delete old logfile
+#
+find $logdir -mtime +$MaxLogAge | xargs rm -f
+
+
+#
+# Start logging
+#
+logfile=$logdir/backup.log.`date +\%Y\%m\%d\%H\%M`
+
+echo "Day Index: $dayidx    Bucket: $bucket" | tee $logfile
+echo "Backup start at `date`."          | tee -a $logfile
+
+
+#
+# Setup Backup temp dir
+#
+if [ -d $bkupdir ]; then
+  # Remove temporary archives
+  rm -rf $bkupdir/*
+else
+  # Make temporary directory
+  mkdir $bkupdir
+fi
+
+
+#
+# Backup scripts
+#
+BKUP_PREFIX=$bkupdir/$dayidx-
+
+cd $BASEDIR
+tar zcf ${BKUP_PREFIX}backup-scripts.tgz *
+
+BKUP_DIR=$bkupdir
+export BKUP_DIR
+export BKUP_PREFIX
+
+cd $BASEDIR/conf.d
+for cmd in `ls S*`
+do
+  ./$cmd >>$logfile 2>&1
+  if [ $? -eq 0 ]; then
+    echo -e "$cmd\t[OK]"     | tee -a $logfile
+  else
+    echo -e "$cmd\t[NG]" | tee -a $logfile
+  fi
+done
+
+
+##
+## Sync to cloud
+##
+echo "Start to synchronize files to cloud." >> $logfile
+$Sync $bkupdir $bucket $backupdir
+if [ $? -eq 0 ]; then
+  result=0
+  echo -e "Sync\t[OK]"     | tee -a $logfile
+else
+  result=1
+  echo -e "Sync\t[NG]" | tee -a $logfile
+fi
+
+
+#
+# Exit
+#
+if [ $result -eq 0 ]; then
+  echo "Backup done at `date`."   | tee -a $logfile
+  exit 0
+else
+  echo "Backup failed at `date`." | tee -a $logfile
+  exit 1
+fi

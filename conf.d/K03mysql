@@ -1,0 +1,15 @@
+#!/bin/bash
+##############################
+#
+#  backup mysql database
+#
+##############################
+
+mysqlrootpass=
+
+echo "mysqldump start."
+
+mysqldump -uroot -p$mysqlrootpass --all-databases --events | gzip > ${BKUP_PREFIX}mysqldump.gz
+
+echo "mysqldump end"
+

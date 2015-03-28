@@ -1,0 +1,14 @@
+#!/bin/bash
+##############################
+#
+#  backup LDAP
+#
+##############################
+
+echo "slap dump start."
+
+slapcat -v -l ${BKUP_PREFIX}ldap.diff >& /dev/null
+gzip ${BKUP_PREFIX}ldap.diff
+
+echo "slap dump end."
+

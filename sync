@@ -1,0 +1,5 @@
+#!/bin/bash
+
+##s3sync -r --ssl $1 $2:$3
+##gsutil rsync -r $1 gs://$2:$3
+exit $?

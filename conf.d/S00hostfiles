@@ -1,0 +1,13 @@
+#!/bin/bash
+##############################
+#
+#  backup Host files
+#
+##############################
+
+echo "Host files dump start."
+
+# /etc
+tar zcf ${BKUP_PREFIX}etc.tgz -C / etc
+
+echo "Host files dump end."
