@@ -6,6 +6,11 @@
 Sync=/backup/sync
 
 #
+# Backup command dir
+#
+BackupCmdDir=/backup/bkcmd.d
+
+#
 # Temporary directory for storing backup files
 #
 BackupTmpDir=/backup/tmp

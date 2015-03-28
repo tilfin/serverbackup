@@ -70,7 +70,7 @@ BKUP_DIR=$bkupdir
 export BKUP_DIR
 export BKUP_PREFIX
 
-cd $BASEDIR/conf.d
+cd $BackupCmdDir
 for cmd in `ls S*`
 do
   ./$cmd >>$logfile 2>&1
