@@ -32,7 +32,7 @@ bucket=${buckets[$bkidx]}
 
 
 #
-# Delete old logfile
+# Delete old logfiles
 #
 find $logdir -mtime +$MaxLogAge | xargs rm -f
 
@@ -75,24 +75,24 @@ for cmd in `ls S*`
 do
   ./$cmd >>$logfile 2>&1
   if [ $? -eq 0 ]; then
-    echo -e "$cmd\t[OK]"     | tee -a $logfile
+    echo -e "[OK] $cmd" | tee -a $logfile
   else
-    echo -e "$cmd\t[NG]" | tee -a $logfile
+    echo -e "[NG] $cmd" | tee -a $logfile
   fi
 done
 
 
-##
-## Sync to cloud
-##
+#
+# Syncing to the cloud
+#
 echo "Start to synchronize files to cloud." >> $logfile
 $Sync $bkupdir $bucket $backupdir
 if [ $? -eq 0 ]; then
   result=0
-  echo -e "Sync\t[OK]"     | tee -a $logfile
+  echo -e "[OK] Sync" | tee -a $logfile
 else
   result=1
-  echo -e "Sync\t[NG]" | tee -a $logfile
+  echo -e "[NG] Sync" | tee -a $logfile
 fi
 
 

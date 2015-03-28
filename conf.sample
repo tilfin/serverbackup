@@ -1,7 +1,7 @@
 #
 # sync script path
 #
-# Sync <srcdir> <bucket> <destdir>
+# Usage: <Sync> <srcdir> <bucket> <destdir>
 #
 Sync=/backup/sync
 
