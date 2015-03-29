@@ -81,11 +81,6 @@ fi
 echo "Day Index: $dayidx    Bucket: $bucket" | tee $logfile
 echo "Backup start at `date`."          | tee -a $logfile
 
-#
-# Setup Backup temp dir
-#
-
-
 
 #
 # Backup scripts
@@ -117,10 +112,9 @@ done
 #
 # Syncing to the cloud
 #
-echo "Start to synchronize files to cloud." >> $logfile
+echo "Start to synchronize files to cloud." | tee -a $logfile
 if [ "$Sync" == "" ]; then
   Sync=$BASEDIR/sync
-  echo $Sync
 fi
 $Sync $bkupdir $bucket $backupdir
 if [ $? -eq 0 ]; then
