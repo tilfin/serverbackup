@@ -33,7 +33,7 @@ Buckets=
 #
 # Folder name which is root path of bucket
 #
-Folder=`hostname`
+DestDir=`hostname`
 
 #
 # Days for which you desire to save cloud
