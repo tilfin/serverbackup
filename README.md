@@ -1,6 +1,8 @@
 ServerBackup
 ============
 
+[![Build Status](https://travis-ci.org/tilfin/serverbackup.svg)](https://travis-ci.org/tilfin/serverbackup)
+
 Server backup to cloud
 
 It can rotate the bucket which is backup destination of each day.
