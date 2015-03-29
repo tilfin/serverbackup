@@ -1,0 +1,46 @@
+#
+# Sync script path
+#
+# Usage: <script> <srcdir> <bucket> <destdir>
+#
+#Sync=/backup/serverbackup/sync
+
+#
+# Backup command directory
+#
+# Executes each command with prefix 'S' in this directory
+#
+#BackupCmdDir=/backup/serverbackup/bkcmd.d
+
+#
+# Temporary directory for storing backup files
+#
+BackupTmpDir=/backup/tmp
+
+#
+# Log directory
+#
+LogDir=/backup/log
+
+#
+# Buckets of Cloud storage
+#
+#
+#Buckets=backup
+#Buckets=asia,us,eu
+Buckets=
+
+#
+# Folder name which is root path of bucket
+#
+Folder=`hostname`
+
+#
+# Days for which you desire to save cloud
+#
+MaxAge=5
+
+#
+# Days for which you desire to save logfiles
+#
+MaxLogAge=20

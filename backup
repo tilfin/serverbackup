@@ -6,20 +6,52 @@
 ##############################
 
 BASEDIR=${0%/*}
+BASEDIR=$(cd $BASEDIR && pwd)
 
 #
-# Load conf and setup env
+# Load config file and setup env
 #
-if [ ! -f $BASEDIR/conf ]; then
-  echo "conf not found!"
+cfgfile=$1
+if [ "$cfgfile" == "" ]; then
+  cfgfile=$BASEDIR/backup.conf
+fi
+if [ ! -f $cfgfile ]; then
+  echo "Config file not found!"
+  exit 1
+fi
+. $cfgfile
+
+#
+# Buckets
+#
+if [ "$Buckets" == "" ]; then
+  echo "Buckets not defined!"
   exit 1
 fi
 
-. $BASEDIR/conf
 
+#
+# Setup backup temp dir
+#
+if [ -z "${BackupTmpDir+x}" ]; then
+  echo "Backup temp dir not defined!"
+  exit 1
+fi
 bkupdir=$BackupTmpDir
-logdir=$LogDir
-backupdir=$Folder
+
+if [ -d $bkupdir ]; then
+  # Remove temporary archives
+  rm -rf $bkupdir/*
+else
+  # Make temporary directory
+  mkdir $bkupdir
+fi
+if [ $? -ne 0 ]; then
+  exit 1
+fi
+
+
+backupdir="$DestDir"
 buckets=(`echo $Buckets | tr -s ',' ' '`)
 
 epochsec=`date +"%s"`
@@ -32,30 +64,27 @@ bucket=${buckets[$bkidx]}
 
 
 #
-# Delete old logfiles
+# Logging
 #
-find $logdir -mtime +$MaxLogAge | xargs rm -f
+if [ -z "${LogDir+x}" ]; then
+  logfile=/dev/null
+else
+  # Delete old logfiles
+  find $logdir -mtime +$MaxLogAge | xargs rm -f
+  logfile=$logdir/backup.log.`date +\%Y\%m\%d\%H\%M`
+fi
 
 
 #
-# Start logging
+# Start
 #
-logfile=$logdir/backup.log.`date +\%Y\%m\%d\%H\%M`
-
 echo "Day Index: $dayidx    Bucket: $bucket" | tee $logfile
 echo "Backup start at `date`."          | tee -a $logfile
-
 
 #
 # Setup Backup temp dir
 #
-if [ -d $bkupdir ]; then
-  # Remove temporary archives
-  rm -rf $bkupdir/*
-else
-  # Make temporary directory
-  mkdir $bkupdir
-fi
+
 
 
 #
@@ -70,6 +99,9 @@ BKUP_DIR=$bkupdir
 export BKUP_DIR
 export BKUP_PREFIX
 
+if [ "$BackupCmdDir" == "" ]; then
+  BackupCmdDir=$BASEDIR/bkcmd.d
+fi
 cd $BackupCmdDir
 for cmd in `ls S*`
 do
@@ -86,6 +118,10 @@ done
 # Syncing to the cloud
 #
 echo "Start to synchronize files to cloud." >> $logfile
+if [ "$Sync" == "" ]; then
+  Sync=$BASEDIR/sync
+  echo $Sync
+fi
 $Sync $bkupdir $bucket $backupdir
 if [ $? -eq 0 ]; then
   result=0

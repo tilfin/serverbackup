@@ -1,5 +1,8 @@
 #!/bin/bash
 
-##s3sync -r --ssl $1 $2:$3
-##gsutil rsync -r $1 gs://$2:$3
+##s3sync -r --ssl $1 $2/$3
+##gsutil rsync -r $1 gs://$2/$3
+echo "srcdir : $1"
+echo "bucket : $2"
+echo "destdir: $3"
 exit $?
