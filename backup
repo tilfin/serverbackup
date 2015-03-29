@@ -39,6 +39,11 @@ if [ -z "${BackupTmpDir+x}" ]; then
 fi
 bkupdir=$BackupTmpDir
 
+if [[ ! "$BackupTmpDir" =~ te?mp$ ]]; then
+  echo "Backup temp dirname must end with 'temp' or 'tmp'!"
+  exit 1
+fi
+
 if [ -d $bkupdir ]; then
   # Remove temporary archives
   rm -rf $bkupdir/*

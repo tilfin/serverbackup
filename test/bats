@@ -53,3 +53,9 @@ teardown() {
   [ "$status" -eq 1 ]
   [ "${lines[0]}" = "Backup temp dir not defined!" ]
 }
+
+@test "invoking backup with config where backup temp dirname is invalid" {
+  run backup $confdir/invalid-tmpdir.conf
+  [ "$status" -eq 1 ]
+  [ "${lines[0]}" = "Backup temp dirname must end with 'temp' or 'tmp'!" ]
+}
