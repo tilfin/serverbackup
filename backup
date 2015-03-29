@@ -70,8 +70,8 @@ if [ -z "${LogDir+x}" ]; then
   logfile=/dev/null
 else
   # Delete old logfiles
-  find $logdir -mtime +$MaxLogAge | xargs rm -f
-  logfile=$logdir/backup.log.`date +\%Y\%m\%d\%H\%M`
+  find $LogDir -mtime +$MaxLogAge -name "*.log.*" | xargs rm -f
+  logfile=$LogDir/backup.log.`date +\%Y\%m\%d\%H\%M`
 fi
 
 
