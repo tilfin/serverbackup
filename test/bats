@@ -1,0 +1,55 @@
+#!/usr/bin/env bats
+
+export PATH="${BATS_TEST_DIRNAME}/..:$PATH"
+
+confdir="${BATS_TEST_DIRNAME}/fixtures"
+
+
+setup() {
+  cp $confdir/valid.conf backup.conf
+}
+
+teardown() {
+  rm backup.conf
+}
+
+
+@test "invoking backup without config file" {
+  run backup
+  [ "$status" -eq 0 ]
+  [ "${lines[2]}" = "[OK] S01command" ]
+  [ "${lines[3]}" = "Start to synchronize files to cloud." ]
+  [ "${lines[4]}" = "srcdir : /tmp/backup-temp" ]
+  [ "${lines[5]}" = "bucket : storage" ]
+  [ "${lines[6]}" = "destdir: destination" ]
+  [ "${lines[7]}" = "[OK] Sync" ]
+}
+
+@test "invoking backup with valid config file" {
+  run backup $confdir/valid.conf
+  [ "$status" -eq 0 ]
+  [ "${lines[2]}" = "[OK] S01command" ]
+  [ "${lines[3]}" = "Start to synchronize files to cloud." ]
+  [ "${lines[4]}" = "srcdir : /tmp/backup-temp" ]
+  [ "${lines[5]}" = "bucket : storage" ]
+  [ "${lines[6]}" = "destdir: destination" ]
+  [ "${lines[7]}" = "[OK] Sync" ]
+}
+
+@test "invoking backup with config file that does not exist" {
+  run backup notexists.conf
+  [ "$status" -eq 1 ]
+  [ "${lines[0]}" = "Config file not found!" ]
+}
+
+@test "invoking backup with config where buckets is not defined " {
+  run backup $confdir/no-bucket.conf
+  [ "$status" -eq 1 ]
+  [ "${lines[0]}" = "Buckets not defined!" ]
+}
+
+@test "invoking backup with config where backup temp dir is not defined " {
+  run backup $confdir/no-tmpdir.conf
+  [ "$status" -eq 1 ]
+  [ "${lines[0]}" = "Backup temp dir not defined!" ]
+}
