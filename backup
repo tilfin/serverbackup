@@ -5,13 +5,41 @@
 #
 ##############################
 
+#
+# Usage and parse options
+#
+usage() {
+  echo "Usage: $0 [-n] [-f configfile]" 1>&2
+  exit 1
+}
+
+while getopts f:nh OPT
+do
+  case $OPT in
+    f)  cfgfile=$OPTARG
+        ;;
+    n)  DRY_RUN=1
+        echo "Dry run!"
+        export DRY_RUN
+        ;;
+    h)  usage
+        ;;
+    \?) usage
+        ;;
+  esac
+done
+
+shift $((OPTIND - 1))
+
+#
+# Move basedir
+#
 BASEDIR=${0%/*}
 BASEDIR=$(cd $BASEDIR && pwd)
 
 #
 # Load config file and setup env
 #
-cfgfile=$1
 if [ "$cfgfile" == "" ]; then
   cfgfile=$BASEDIR/backup.conf
 fi
