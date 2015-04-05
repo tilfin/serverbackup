@@ -32,18 +32,32 @@ $ sudo -i
 # cp backup.conf.sample backup.conf
 ```
 
-### Quick Settings
+### Quick Settings for Google Cloud Storage
+
+#### Install gsutil
+
+```
+# cd /backup
+# wget https://storage.googleapis.com/pub/gsutil.tar.gz
+# tar zxf gsutil.tar.gz
+```
+
+#### Setup gsutil authentication
+
+```
+# /backup/gsutil/gsutil config -o /backup/serverbackup/boto.cfg
+```
 
 #### backup.conf
 
+Edit following entries.
+
 * Buckets
-
-#### Sync
-
-Edit sync script.
+* Sync
 
 ```
-gsutil $1 gs://$2/$3
+Buckets=backup-bucket
+Sync=/backup/serverbackup/sync.gsutil
 ```
 
 #### Backup commands
