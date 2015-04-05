@@ -69,7 +69,8 @@ teardown() {
   [ "${lines[5]}" = "srcdir : /tmp/backup-temp" ]
   [ "${lines[6]}" = "bucket : storage" ]
   [ "${lines[7]}" = "destdir: destination" ]
-  [ "${lines[8]}" = "[OK] Sync" ]
+  [ "${lines[8]}" = "dry run backup" ]
+  [ "${lines[9]}" = "[OK] Sync" ]
 }
 
 @test "invoking dry run backup with config file" {
@@ -81,5 +82,6 @@ teardown() {
   [ "${lines[5]}" = "srcdir : /tmp/backup-temp" ]
   [ "${lines[6]}" = "bucket : storage" ]
   [ "${lines[7]}" = "destdir: destination" ]
-  [ "${lines[8]}" = "[OK] Sync" ]
+  [ "${lines[8]}" = "dry run backup" ]
+  [ "${lines[9]}" = "[OK] Sync" ]
 }
