@@ -26,7 +26,7 @@ teardown() {
 }
 
 @test "invoking backup with valid config file" {
-  run backup $confdir/valid.conf
+  run backup -f $confdir/valid.conf
   [ "$status" -eq 0 ]
   [ "${lines[2]}" = "[OK] S01command" ]
   [ "${lines[3]}" = "Start to synchronize files to cloud." ]
@@ -37,25 +37,51 @@ teardown() {
 }
 
 @test "invoking backup with config file that does not exist" {
-  run backup notexists.conf
+  run backup -f notexists.conf
   [ "$status" -eq 1 ]
   [ "${lines[0]}" = "Config file not found!" ]
 }
 
 @test "invoking backup with config where buckets is not defined " {
-  run backup $confdir/no-bucket.conf
+  run backup -f $confdir/no-bucket.conf
   [ "$status" -eq 1 ]
   [ "${lines[0]}" = "Buckets not defined!" ]
 }
 
 @test "invoking backup with config where backup temp dir is not defined " {
-  run backup $confdir/no-tmpdir.conf
+  run backup -f $confdir/no-tmpdir.conf
   [ "$status" -eq 1 ]
   [ "${lines[0]}" = "Backup temp dir not defined!" ]
 }
 
 @test "invoking backup with config where backup temp dirname is invalid" {
-  run backup $confdir/invalid-tmpdir.conf
+  run backup -f $confdir/invalid-tmpdir.conf
   [ "$status" -eq 1 ]
   [ "${lines[0]}" = "Backup temp dirname must end with 'temp' or 'tmp'!" ]
+}
+
+@test "invoking dry run backup" {
+  run backup -n
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "Dry run!" ]
+  [ "${lines[3]}" = "[OK] S01command" ]
+  [ "${lines[4]}" = "Start to synchronize files to cloud." ]
+  [ "${lines[5]}" = "srcdir : /tmp/backup-temp" ]
+  [ "${lines[6]}" = "bucket : storage" ]
+  [ "${lines[7]}" = "destdir: destination" ]
+  [ "${lines[8]}" = "dry run backup" ]
+  [ "${lines[9]}" = "[OK] Sync" ]
+}
+
+@test "invoking dry run backup with config file" {
+  run backup -n -f $confdir/valid.conf
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "Dry run!" ]
+  [ "${lines[3]}" = "[OK] S01command" ]
+  [ "${lines[4]}" = "Start to synchronize files to cloud." ]
+  [ "${lines[5]}" = "srcdir : /tmp/backup-temp" ]
+  [ "${lines[6]}" = "bucket : storage" ]
+  [ "${lines[7]}" = "destdir: destination" ]
+  [ "${lines[8]}" = "dry run backup" ]
+  [ "${lines[9]}" = "[OK] Sync" ]
 }

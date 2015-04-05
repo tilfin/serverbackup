@@ -5,4 +5,7 @@
 echo "srcdir : $1"
 echo "bucket : $2"
 echo "destdir: $3"
+if [ "$DRY_RUN" ]; then
+  echo "dry run backup"
+fi
 exit $?
