@@ -17,23 +17,23 @@ teardown() {
 @test "invoking backup without config file" {
   run backup
   [ "$status" -eq 0 ]
-  [ "${lines[2]}" = "[OK] S01command" ]
-  [ "${lines[3]}" = "Start to synchronize files to cloud." ]
-  [ "${lines[4]}" = "srcdir : /tmp/backup-temp" ]
-  [ "${lines[5]}" = "bucket : storage" ]
-  [ "${lines[6]}" = "destdir: destination" ]
-  [ "${lines[7]}" = "[OK] Sync" ]
+  [ "${lines[4]}" = "[OK] S01command" ]
+  [ "${lines[5]}" = "Start to synchronize files to cloud." ]
+  [ "${lines[6]}" = "srcdir : /tmp/backup-temp" ]
+  [ "${lines[7]}" = "bucket : storage" ]
+  [ "${lines[8]}" = "destdir: destination" ]
+  [ "${lines[9]}" = "[OK] Sync" ]
 }
 
 @test "invoking backup with valid config file" {
   run backup -f $confdir/valid.conf
   [ "$status" -eq 0 ]
-  [ "${lines[2]}" = "[OK] S01command" ]
-  [ "${lines[3]}" = "Start to synchronize files to cloud." ]
-  [ "${lines[4]}" = "srcdir : /tmp/backup-temp" ]
-  [ "${lines[5]}" = "bucket : storage" ]
-  [ "${lines[6]}" = "destdir: destination" ]
-  [ "${lines[7]}" = "[OK] Sync" ]
+  [ "${lines[4]}" = "[OK] S01command" ]
+  [ "${lines[5]}" = "Start to synchronize files to cloud." ]
+  [ "${lines[6]}" = "srcdir : /tmp/backup-temp" ]
+  [ "${lines[7]}" = "bucket : storage" ]
+  [ "${lines[8]}" = "destdir: destination" ]
+  [ "${lines[9]}" = "[OK] Sync" ]
 }
 
 @test "invoking backup with config file that does not exist" {
@@ -64,24 +64,24 @@ teardown() {
   run backup -n
   [ "$status" -eq 0 ]
   [ "${lines[0]}" = "Dry run!" ]
-  [ "${lines[3]}" = "[OK] S01command" ]
-  [ "${lines[4]}" = "Start to synchronize files to cloud." ]
-  [ "${lines[5]}" = "srcdir : /tmp/backup-temp" ]
-  [ "${lines[6]}" = "bucket : storage" ]
-  [ "${lines[7]}" = "destdir: destination" ]
-  [ "${lines[8]}" = "dry run backup" ]
-  [ "${lines[9]}" = "[OK] Sync" ]
+  [ "${lines[5]}" = "[OK] S01command" ]
+  [ "${lines[6]}" = "Start to synchronize files to cloud." ]
+  [ "${lines[7]}" = "srcdir : /tmp/backup-temp" ]
+  [ "${lines[8]}" = "bucket : storage" ]
+  [ "${lines[9]}" = "destdir: destination" ]
+  [ "${lines[10]}" = "dry run backup" ]
+  [ "${lines[11]}" = "[OK] Sync" ]
 }
 
 @test "invoking dry run backup with config file" {
   run backup -n -f $confdir/valid.conf
   [ "$status" -eq 0 ]
   [ "${lines[0]}" = "Dry run!" ]
-  [ "${lines[3]}" = "[OK] S01command" ]
-  [ "${lines[4]}" = "Start to synchronize files to cloud." ]
-  [ "${lines[5]}" = "srcdir : /tmp/backup-temp" ]
-  [ "${lines[6]}" = "bucket : storage" ]
-  [ "${lines[7]}" = "destdir: destination" ]
-  [ "${lines[8]}" = "dry run backup" ]
-  [ "${lines[9]}" = "[OK] Sync" ]
+  [ "${lines[5]}" = "[OK] S01command" ]
+  [ "${lines[6]}" = "Start to synchronize files to cloud." ]
+  [ "${lines[7]}" = "srcdir : /tmp/backup-temp" ]
+  [ "${lines[8]}" = "bucket : storage" ]
+  [ "${lines[9]}" = "destdir: destination" ]
+  [ "${lines[10]}" = "dry run backup" ]
+  [ "${lines[11]}" = "[OK] Sync" ]
 }

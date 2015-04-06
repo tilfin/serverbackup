@@ -111,8 +111,10 @@ fi
 #
 # Start
 #
-echo "Day Index: $dayidx    Bucket: $bucket" | tee $logfile
-echo "Backup start at `date`."          | tee -a $logfile
+echo "Day Index: $dayidx"      | tee $logfile
+echo "Bucket: $bucket"         | tee -a $logfile
+echo "Host: `hostname`"        | tee -a $logfile
+echo "Backup start at `date`." | tee -a $logfile
 
 
 #
