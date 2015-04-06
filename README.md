@@ -37,6 +37,7 @@ $ sudo -i
 #### Install gsutil
 
 ```
+# apt-get install python-dev python-crypto
 # cd /backup
 # wget https://storage.googleapis.com/pub/gsutil.tar.gz
 # tar zxf gsutil.tar.gz
