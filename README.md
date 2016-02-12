@@ -49,6 +49,29 @@ $ sudo -i
 # /backup/gsutil/gsutil config -o /backup/serverbackup/boto.cfg
 ```
 
+The above method is that the token refresh does not work.
+It is permanently set up in the following way.
+
+1. Create a service account at your Google cloud console.
+2. Select to furnish a new private key whose type is _P12_.
+3. Put created .p12 file at `/backup/serverbackup/<secret key file.p12>`
+4. Write `/backup/serverbackup/boto.cfg` with the content of the following
+
+```
+[Credentials]
+gs_service_client_id = <service account email address>
+gs_service_key_file = /backup/serverbackup/<secret key file.p12>
+gs_service_key_file_password = <pass phrase for key file>
+
+[Boto]
+https_validate_certificates = True
+
+[GSUtil]
+content_language = en
+default_api_version = 2
+default_project_id = <Google Developer Project ID>
+```
+
 #### backup.conf
 
 Edit following entries.
