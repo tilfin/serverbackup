@@ -1,10 +1,4 @@
 #!/bin/bash
 
-export BOTO_PATH=/backup/serverbackup/boto.cfg
-
-if [ "$DRY_RUN" ]; then
-  /backup/gsutil/gsutil rsync -n -r $1 gs://$2/$3
-else
-  /backup/gsutil/gsutil rsync -r $1 gs://$2/$3 2> /dev/null
-fi
-exit $?
+# Keep existing Sync=.../sync.gsutil configurations working after migration.
+exec "$(dirname -- "$0")/sync.gcloud" "$@"

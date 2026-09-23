@@ -16,7 +16,7 @@ Any sync tool
 For example,
 
 * s3sync (easy to use https://github.com/tilfin/s3sync forked from aproxacs/s3sync)
-* gsutil (https://cloud.google.com/storage/docs/gsutil)
+* Google Cloud CLI (`gcloud storage`; https://cloud.google.com/sdk/docs/install)
 
 
 Setup
@@ -34,55 +34,25 @@ $ sudo -i
 
 ### Quick Settings for Google Cloud Storage
 
-#### Install gsutil
+#### Install and authenticate the Google Cloud CLI
 
-```
-# apt-get install python-dev python-crypto
-# cd /backup
-# wget https://storage.googleapis.com/pub/gsutil.tar.gz
-# tar zxf gsutil.tar.gz
-```
+Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) on the backup host and check that `gcloud storage` is available. Run authentication as the same OS user that runs the cron job (the example below uses `root`). Give that identity `roles/storage.objectUser` on each destination bucket.
 
-#### Setup gsutil authentication
+* On a Google Compute Engine VM, attach a service account to the VM and use the `cloud-platform` access scope. The CLI uses the attached service account automatically.
+* On a host outside Google Cloud, use [Workload Identity Federation](https://cloud.google.com/iam/docs/workload-identity-federation) and run `gcloud auth login --cred-file=/path/to/credential-config.json` as the backup user. Keep the credential configuration available when the job runs.
 
-```
-# /backup/gsutil/gsutil config -o /backup/serverbackup/boto.cfg
-```
-
-The above method is that the token refresh does not work.
-It is permanently set up in the following way.
-
-1. Create a service account at your Google cloud console.
-2. Select to furnish a new private key whose type is _P12_.
-3. Put created .p12 file at `/backup/serverbackup/<secret key file.p12>`
-4. Write `/backup/serverbackup/boto.cfg` with the content of the following
-
-```
-[Credentials]
-gs_service_client_id = <service account email address>
-gs_service_key_file = /backup/serverbackup/<secret key file.p12>
-gs_service_key_file_password = <pass phrase for key file>
-
-[Boto]
-https_validate_certificates = True
-
-[GSUtil]
-content_language = en
-default_api_version = 2
-default_project_id = <Google Developer Project ID>
-```
+The old `boto.cfg` and P12 key are not used by `gcloud storage`. After verifying the new authentication, remove them from `/backup/serverbackup`: the backup script archives every file in that directory.
 
 #### backup.conf
 
-Edit following entries.
-
-* Buckets
-* Sync
+Edit `Buckets` and `Sync` in `/backup/serverbackup/backup.conf`:
 
 ```
 Buckets=backup-bucket
-Sync=/backup/serverbackup/sync.gsutil
+Sync=/backup/serverbackup/sync.gcloud
 ```
+
+Existing `Sync=/backup/serverbackup/sync.gsutil` settings still work; that script now calls `sync.gcloud`. Syncing retains the existing remote objects because it does not use `--delete-unmatched-destination-objects`. `backup -n` previews the Cloud Storage sync with `--dry-run`.
 
 #### Backup commands
 

@@ -11,6 +11,9 @@ setup() {
 
 teardown() {
   rm backup.conf
+  if [ -n "$mockdir" ]; then
+    rm -rf "$mockdir"
+  fi
 }
 
 
@@ -84,4 +87,44 @@ teardown() {
   [ "${lines[9]}" = "destdir: destination" ]
   [ "${lines[10]}" = "dry run backup" ]
   [ "${lines[11]}" = "[OK] Sync" ]
+}
+
+
+make_gcloud_mock() {
+  mockdir=$(mktemp -d)
+  cat > "$mockdir/gcloud" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$@"
+exit "${GCLOUD_TEST_STATUS:-0}"
+EOF
+  chmod +x "$mockdir/gcloud"
+}
+
+@test "gcloud sync preserves the source and destination arguments" {
+  make_gcloud_mock
+  run env PATH="$mockdir:$PATH" DRY_RUN= sync.gcloud "/tmp/backup temp" "backup-bucket" "host/backups"
+  [ "$status" -eq 0 ]
+  [ "${lines[0]}" = "storage" ]
+  [ "${lines[1]}" = "rsync" ]
+  [ "${lines[2]}" = "/tmp/backup temp" ]
+  [ "${lines[3]}" = "gs://backup-bucket/host/backups" ]
+  [ "${lines[4]}" = "--recursive" ]
+  [ "${lines[5]}" = "--no-ignore-symlinks" ]
+  [ "${#lines[@]}" -eq 6 ]
+}
+
+@test "gcloud sync passes through dry run" {
+  make_gcloud_mock
+  run env PATH="$mockdir:$PATH" DRY_RUN=1 sync.gcloud "/tmp/backup-temp" "backup-bucket" "host"
+  [ "$status" -eq 0 ]
+  [ "${lines[6]}" = "--dry-run" ]
+  [ "${#lines[@]}" -eq 7 ]
+}
+
+@test "legacy sync path delegates to gcloud and propagates failures" {
+  make_gcloud_mock
+  run env PATH="$mockdir:$PATH" GCLOUD_TEST_STATUS=23 sync.gsutil "/tmp/backup-temp" "backup-bucket" "host"
+  [ "$status" -eq 23 ]
+  [ "${lines[0]}" = "storage" ]
+  [ "${lines[3]}" = "gs://backup-bucket/host" ]
 }
