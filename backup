@@ -31,20 +31,9 @@ if [ -z "$BackupTmpDir" ]; then
   echo "Backup temp dir not defined!" >&2
   exit 1
 fi
-if [[ "$BackupTmpDir" != /* || ! -d "$BackupTmpDir" || ! -w "$BackupTmpDir" ]]; then
+if [[ "$BackupTmpDir" != /* || -L "$BackupTmpDir" || ! -d "$BackupTmpDir" || ! -w "$BackupTmpDir" ]]; then
   echo "Backup temp dir must be a writable, existing absolute directory (not a symlink)!" >&2
   exit 1
-fi
-stat_path=$BackupTmpDir
-if [ -L "$BackupTmpDir" ]; then
-  # macOS provides /tmp as a system-owned link to its root-owned sticky /private/tmp.
-  if [[ "$(uname -s)" == Darwin && "$BackupTmpDir" == /tmp &&
-        "$(readlink /tmp)" == private/tmp && "$(stat -f %u /tmp)" == 0 ]]; then
-    stat_path=/private/tmp
-  else
-    echo "Backup temp dir must be a writable, existing absolute directory (not a symlink)!" >&2
-    exit 1
-  fi
 fi
 if [[ ! "$MaxAge" =~ ^[0-9]+$ || ${#MaxAge} -gt 9 ]] || (( 10#$MaxAge < 1 )); then
   echo "MaxAge must be a positive integer!" >&2
@@ -61,11 +50,11 @@ if [ -n "$LogDir" ]; then
   fi
 fi
 
-# Private user-owned directories and root-owned sticky directories such as /tmp.
-if stat_info=$(stat -c '%u %a' "$stat_path" 2>/dev/null); then
+# The lock file needs a parent that other users cannot write to.
+if stat_info=$(stat -c '%u %a' "$BackupTmpDir" 2>/dev/null); then
   :
 else
-  stat_info=$(stat -f '%u %p' "$stat_path") || exit 1
+  stat_info=$(stat -f '%u %p' "$BackupTmpDir") || exit 1
 fi
 read -r dir_owner dir_mode <<< "$stat_info"
 user_id=$(id -u)
@@ -74,8 +63,7 @@ if ! [[ "$dir_mode" =~ ^[0-7]+$ ]]; then
   exit 1
 fi
 mode=$((8#$dir_mode))
-if ! { [[ "$dir_owner" == "$user_id" ]] && (( (mode & 0022) == 0 )); } &&
-   ! { [[ "$dir_owner" == 0 ]] && (( (mode & 01000) != 0 )); }; then
+if [[ "$dir_owner" != "$user_id" ]] || (( (mode & 0022) != 0 )); then
   echo "Unsafe backup temp dir owner or permissions!" >&2
   exit 1
 fi

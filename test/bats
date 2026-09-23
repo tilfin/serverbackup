@@ -117,6 +117,13 @@ teardown() {
   [ ! -e "$testdir/work area/.serverbackup.lock" ]
 }
 
+@test "the shared /tmp directory is rejected before creating a lock" {
+  printf '\nBackupTmpDir=/tmp\n' >> backup.conf
+  run backup -f backup.conf
+  [ "$status" -eq 1 ]
+  [ ! -e "$testdir/work area/.serverbackup.lock" ]
+}
+
 @test "invalid MaxAge is rejected before creating a lock" {
   printf '\nMaxAge=0\n' >> backup.conf
   run backup -f backup.conf
