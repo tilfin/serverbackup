@@ -13,7 +13,10 @@
 #BackupCmdDir=/backup/serverbackup/bkcmd.d
 
 #
-# Temporary directory for storing backup files
+# Existing parent directory for private per-run backup work directories.
+# It must be owned by the backup user with no group/other write permission.
+# Shared directories such as /tmp are not allowed because the lock file
+# is stored here too.
 #
 BackupTmpDir=/backup/tmp
 

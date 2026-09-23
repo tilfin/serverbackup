@@ -6,11 +6,15 @@ confdir="${BATS_TEST_DIRNAME}/fixtures"
 
 
 setup() {
-  cp $confdir/valid.conf backup.conf
+  testdir=$(mktemp -d)
+  mkdir "$testdir/work area"
+  cp "$confdir/valid.conf" backup.conf
+  printf '\nBackupTmpDir=%q\n' "$testdir/work area" >> backup.conf
 }
 
 teardown() {
-  rm backup.conf
+  rm -f backup.conf
+  rm -rf "$testdir"
   if [ -n "$mockdir" ]; then
     rm -rf "$mockdir"
   fi
@@ -22,18 +26,18 @@ teardown() {
   [ "$status" -eq 0 ]
   [ "${lines[4]}" = "[OK] S01command" ]
   [ "${lines[5]}" = "Start to synchronize files to cloud." ]
-  [ "${lines[6]}" = "srcdir : /tmp/backup-temp" ]
+  [[ "${lines[6]}" == "srcdir : $testdir/work area/backup."* ]]
   [ "${lines[7]}" = "bucket : storage" ]
   [ "${lines[8]}" = "destdir: destination" ]
   [ "${lines[9]}" = "[OK] Sync" ]
 }
 
 @test "invoking backup with valid config file" {
-  run backup -f $confdir/valid.conf
+  run backup -f backup.conf
   [ "$status" -eq 0 ]
   [ "${lines[4]}" = "[OK] S01command" ]
   [ "${lines[5]}" = "Start to synchronize files to cloud." ]
-  [ "${lines[6]}" = "srcdir : /tmp/backup-temp" ]
+  [[ "${lines[6]}" == "srcdir : $testdir/work area/backup."* ]]
   [ "${lines[7]}" = "bucket : storage" ]
   [ "${lines[8]}" = "destdir: destination" ]
   [ "${lines[9]}" = "[OK] Sync" ]
@@ -60,7 +64,7 @@ teardown() {
 @test "invoking backup with config where backup temp dirname is invalid" {
   run backup -f $confdir/invalid-tmpdir.conf
   [ "$status" -eq 1 ]
-  [ "${lines[0]}" = "Backup temp dirname must end with 'temp' or 'tmp'!" ]
+  [ "${lines[0]}" = "Backup temp dir must be a writable, existing absolute directory (not a symlink)!" ]
 }
 
 @test "invoking dry run backup" {
@@ -69,7 +73,7 @@ teardown() {
   [ "${lines[0]}" = "Dry run!" ]
   [ "${lines[5]}" = "[OK] S01command" ]
   [ "${lines[6]}" = "Start to synchronize files to cloud." ]
-  [ "${lines[7]}" = "srcdir : /tmp/backup-temp" ]
+  [[ "${lines[7]}" == "srcdir : $testdir/work area/backup."* ]]
   [ "${lines[8]}" = "bucket : storage" ]
   [ "${lines[9]}" = "destdir: destination" ]
   [ "${lines[10]}" = "dry run backup" ]
@@ -77,16 +81,105 @@ teardown() {
 }
 
 @test "invoking dry run backup with config file" {
-  run backup -n -f $confdir/valid.conf
+  run backup -n -f backup.conf
   [ "$status" -eq 0 ]
   [ "${lines[0]}" = "Dry run!" ]
   [ "${lines[5]}" = "[OK] S01command" ]
   [ "${lines[6]}" = "Start to synchronize files to cloud." ]
-  [ "${lines[7]}" = "srcdir : /tmp/backup-temp" ]
+  [[ "${lines[7]}" == "srcdir : $testdir/work area/backup."* ]]
   [ "${lines[8]}" = "bucket : storage" ]
   [ "${lines[9]}" = "destdir: destination" ]
   [ "${lines[10]}" = "dry run backup" ]
   [ "${lines[11]}" = "[OK] Sync" ]
+}
+
+@test "an existing file in the parent survives and the run directory is removed" {
+  touch "$testdir/work area/keep me"
+  run backup -f backup.conf
+  [ "$status" -eq 0 ]
+  [ -f "$testdir/work area/keep me" ]
+  [ -f "$testdir/work area/.serverbackup.lock" ]
+  [ "$(find "$testdir/work area" -maxdepth 1 -type d -name 'backup.*' | wc -l)" -eq 0 ]
+}
+
+@test "a symlink work parent is rejected before creating a lock" {
+  ln -s "$testdir/work area" "$testdir/linked"
+  printf '\nBackupTmpDir=%q\n' "$testdir/linked" >> backup.conf
+  run backup -f backup.conf
+  [ "$status" -eq 1 ]
+  [ ! -e "$testdir/work area/.serverbackup.lock" ]
+}
+
+@test "a group writable work parent is rejected before creating a lock" {
+  chmod 770 "$testdir/work area"
+  run backup -f backup.conf
+  [ "$status" -eq 1 ]
+  [ ! -e "$testdir/work area/.serverbackup.lock" ]
+}
+
+@test "the shared /tmp directory is rejected before creating a lock" {
+  printf '\nBackupTmpDir=/tmp\n' >> backup.conf
+  run backup -f backup.conf
+  [ "$status" -eq 1 ]
+  [ ! -e "$testdir/work area/.serverbackup.lock" ]
+}
+
+@test "invalid MaxAge is rejected before creating a lock" {
+  printf '\nMaxAge=0\n' >> backup.conf
+  run backup -f backup.conf
+  [ "$status" -eq 1 ]
+  [ ! -e "$testdir/work area/.serverbackup.lock" ]
+}
+
+@test "a failed sync removes only its own work directory" {
+  cat > "$testdir/fail-sync" <<'EOF'
+#!/bin/sh
+exit 2
+EOF
+  chmod +x "$testdir/fail-sync"
+  printf '\nSync=%q\n' "$testdir/fail-sync" >> backup.conf
+  touch "$testdir/work area/keep me"
+  run backup -f backup.conf
+  [ "$status" -eq 1 ]
+  [ -f "$testdir/work area/keep me" ]
+  [ "$(find "$testdir/work area" -maxdepth 1 -type d -name 'backup.*' | wc -l)" -eq 0 ]
+}
+
+@test "a TERM signal removes the work directory and records the interruption" {
+  cat > "$testdir/signal-sync" <<'EOF'
+#!/bin/sh
+kill -TERM "$PPID"
+exit 0
+EOF
+  chmod +x "$testdir/signal-sync"
+  printf '\nSync=%q\n' "$testdir/signal-sync" >> backup.conf
+  run backup -f backup.conf
+  [ "$status" -eq 143 ]
+  [[ "$output" == *"Backup interrupted by TERM."* ]]
+  [ "$(find "$testdir/work area" -maxdepth 1 -type d -name 'backup.*' | wc -l)" -eq 0 ]
+}
+
+@test "a second run fails before collection while the first holds the lock" {
+  cat > "$testdir/slow-sync" <<'EOF'
+#!/bin/sh
+touch "$SYNC_STARTED"
+sleep 2
+exit 0
+EOF
+  chmod +x "$testdir/slow-sync"
+  printf '\nSync=%q\nSYNC_STARTED=%q\nexport SYNC_STARTED\n' "$testdir/slow-sync" "$testdir/started" >> backup.conf
+  backup -f backup.conf >"$testdir/first-output" 2>&1 &
+  first_pid=$!
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    [ -e "$testdir/started" ] && break
+    sleep 0.2
+  done
+  [ -e "$testdir/started" ]
+  run backup -f backup.conf
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Another backup is already running"* ]]
+  wait "$first_pid"
+  [ "$(find "$testdir/work area" -maxdepth 1 -type d -name 'backup.*' | wc -l)" -eq 0 ]
 }
 
 
