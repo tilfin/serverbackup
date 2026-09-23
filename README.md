@@ -1,7 +1,7 @@
 ServerBackup
 ============
 
-[![Build Status](https://travis-ci.org/tilfin/serverbackup.svg)](https://travis-ci.org/tilfin/serverbackup)
+[![Test](https://github.com/tilfin/serverbackup/actions/workflows/test.yml/badge.svg)](https://github.com/tilfin/serverbackup/actions/workflows/test.yml)
 
 Server backup to cloud
 
