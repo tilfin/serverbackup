@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Usage: sync.gcloud <srcdir> <bucket> <destdir>
+if [ "$DRY_RUN" ]; then
+  exec gcloud storage rsync "$1" "gs://$2/$3" --recursive --no-ignore-symlinks --dry-run
+fi
+
+exec gcloud storage rsync "$1" "gs://$2/$3" --recursive --no-ignore-symlinks

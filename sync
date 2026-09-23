@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ##s3sync -r --ssl $1 $2/$3
-##gsutil rsync -r $1 gs://$2/$3
+##gcloud storage rsync $1 gs://$2/$3 --recursive
 echo "srcdir : $1"
 echo "bucket : $2"
 echo "destdir: $3"
