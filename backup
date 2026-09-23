@@ -1,173 +1,179 @@
 #!/bin/bash
-##############################
-#
-#  Backup script
-#
-##############################
 
-#
-# Usage and parse options
-#
 usage() {
-  echo "Usage: $0 [-n] [-f configfile]" 1>&2
+  echo "Usage: $0 [-n] [-f configfile]" >&2
   exit 1
 }
 
-while getopts f:nh OPT
-do
+while getopts f:nh OPT; do
   case $OPT in
-    f)  cfgfile=$OPTARG
-        ;;
-    n)  DRY_RUN=1
-        echo "Dry run!"
-        export DRY_RUN
-        ;;
-    h)  usage
-        ;;
-    \?) usage
-        ;;
+    f) cfgfile=$OPTARG ;;
+    n) DRY_RUN=1; export DRY_RUN; echo "Dry run!" ;;
+    h|\?) usage ;;
   esac
 done
-
 shift $((OPTIND - 1))
 
-#
-# Move basedir
-#
-BASEDIR=${0%/*}
-BASEDIR=$(cd $BASEDIR && pwd)
-
-#
-# Load config file and setup env
-#
-if [ "$cfgfile" == "" ]; then
-  cfgfile=$BASEDIR/backup.conf
-fi
-if [ ! -f $cfgfile ]; then
-  echo "Config file not found!"
+BASEDIR=$(cd "${0%/*}" && pwd) || exit 1
+cfgfile=${cfgfile:-$BASEDIR/backup.conf}
+if [ ! -f "$cfgfile" ]; then
+  echo "Config file not found!" >&2
   exit 1
 fi
-. $cfgfile
+. "$cfgfile"
 
-#
-# Buckets
-#
-if [ "$Buckets" == "" ]; then
-  echo "Buckets not defined!"
+# Validate the configuration before opening a log, lock, or work directory.
+if [ -z "$Buckets" ]; then
+  echo "Buckets not defined!" >&2
   exit 1
 fi
-
-
-#
-# Setup backup temp dir
-#
-if [ -z "${BackupTmpDir+x}" ]; then
-  echo "Backup temp dir not defined!"
+if [ -z "$BackupTmpDir" ]; then
+  echo "Backup temp dir not defined!" >&2
   exit 1
 fi
-bkupdir=$BackupTmpDir
-
-if [[ ! "$BackupTmpDir" =~ te?mp$ ]]; then
-  echo "Backup temp dirname must end with 'temp' or 'tmp'!"
+if [[ "$BackupTmpDir" != /* || ! -d "$BackupTmpDir" || ! -w "$BackupTmpDir" ]]; then
+  echo "Backup temp dir must be a writable, existing absolute directory (not a symlink)!" >&2
   exit 1
 fi
-
-if [ -d $bkupdir ]; then
-  # Remove temporary archives
-  rm -rf $bkupdir/*
-else
-  # Make temporary directory
-  mkdir $bkupdir
-fi
-if [ $? -ne 0 ]; then
-  exit 1
-fi
-
-
-backupdir="$DestDir"
-buckets=(`echo $Buckets | tr -s ',' ' '`)
-
-epochsec=`date +"%s"`
-epochday=$((epochsec / 86400))
-dayidx=$((epochday % MaxAge))
-
-bknum=${#buckets[@]}
-bkidx=$((epochday % bknum))
-bucket=${buckets[$bkidx]}
-
-
-#
-# Logging
-#
-if [ -z "${LogDir+x}" ]; then
-  logfile=/dev/null
-else
-  # Delete old logfiles
-  find $LogDir -mtime +$MaxLogAge -name "*.log.*" | xargs rm -f
-  logfile=$LogDir/backup.log.`date +\%Y\%m\%d\%H\%M`
-fi
-
-
-#
-# Start
-#
-echo "Day Index: $dayidx"      | tee $logfile
-echo "Bucket: $bucket"         | tee -a $logfile
-echo "Host: `hostname`"        | tee -a $logfile
-echo "Backup start at `date`." | tee -a $logfile
-
-
-#
-# Backup scripts
-#
-BKUP_PREFIX=$bkupdir/$dayidx-
-
-cd $BASEDIR
-tar zcf ${BKUP_PREFIX}backup-scripts.tgz *
-
-BKUP_DIR=$bkupdir
-export BKUP_DIR
-export BKUP_PREFIX
-
-if [ "$BackupCmdDir" == "" ]; then
-  BackupCmdDir=$BASEDIR/bkcmd.d
-fi
-cd $BackupCmdDir
-for cmd in `ls S*`
-do
-  ./$cmd >>$logfile 2>&1
-  if [ $? -eq 0 ]; then
-    echo -e "[OK] $cmd" | tee -a $logfile
+stat_path=$BackupTmpDir
+if [ -L "$BackupTmpDir" ]; then
+  # macOS provides /tmp as a system-owned link to its root-owned sticky /private/tmp.
+  if [[ "$(uname -s)" == Darwin && "$BackupTmpDir" == /tmp &&
+        "$(readlink /tmp)" == private/tmp && "$(stat -f %u /tmp)" == 0 ]]; then
+    stat_path=/private/tmp
   else
-    echo -e "[NG] $cmd" | tee -a $logfile
+    echo "Backup temp dir must be a writable, existing absolute directory (not a symlink)!" >&2
+    exit 1
+  fi
+fi
+if [[ ! "$MaxAge" =~ ^[0-9]+$ || ${#MaxAge} -gt 9 ]] || (( 10#$MaxAge < 1 )); then
+  echo "MaxAge must be a positive integer!" >&2
+  exit 1
+fi
+if [ -n "$LogDir" ]; then
+  if [[ -L "$LogDir" || ! -d "$LogDir" || ! -w "$LogDir" ]]; then
+    echo "LogDir must be a writable, existing directory!" >&2
+    exit 1
+  fi
+  if [[ ! "$MaxLogAge" =~ ^[0-9]+$ ]]; then
+    echo "MaxLogAge must be a nonnegative integer!" >&2
+    exit 1
+  fi
+fi
+
+# Private user-owned directories and root-owned sticky directories such as /tmp.
+if stat_info=$(stat -c '%u %a' "$stat_path" 2>/dev/null); then
+  :
+else
+  stat_info=$(stat -f '%u %p' "$stat_path") || exit 1
+fi
+read -r dir_owner dir_mode <<< "$stat_info"
+user_id=$(id -u)
+if ! [[ "$dir_mode" =~ ^[0-7]+$ ]]; then
+  echo "Invalid backup temp dir permissions!" >&2
+  exit 1
+fi
+mode=$((8#$dir_mode))
+if ! { [[ "$dir_owner" == "$user_id" ]] && (( (mode & 0022) == 0 )); } &&
+   ! { [[ "$dir_owner" == 0 ]] && (( (mode & 01000) != 0 )); }; then
+  echo "Unsafe backup temp dir owner or permissions!" >&2
+  exit 1
+fi
+
+IFS=, read -r -a buckets <<< "$Buckets"
+if (( ${#buckets[@]} == 0 )); then
+  echo "Buckets not defined!" >&2
+  exit 1
+fi
+for bucket in "${buckets[@]}"; do
+  if [ -z "$bucket" ]; then
+    echo "Buckets contains an empty entry!" >&2
+    exit 1
   fi
 done
 
-
-#
-# Syncing to the cloud
-#
-echo "Start to synchronize files to cloud." | tee -a $logfile
-if [ "$Sync" == "" ]; then
-  Sync=$BASEDIR/sync
-fi
-$Sync $bkupdir $bucket $backupdir
-if [ $? -eq 0 ]; then
-  result=0
-  echo -e "[OK] Sync" | tee -a $logfile
-else
-  result=1
-  echo -e "[NG] Sync" | tee -a $logfile
+epochsec=$(date +%s)
+epochday=$((epochsec / 86400))
+dayidx=$((epochday % (10#$MaxAge)))
+bkidx=$((epochday % ${#buckets[@]}))
+bucket=${buckets[$bkidx]}
+backupdir=$DestDir
+logfile=/dev/null
+if [ -n "$LogDir" ]; then
+  logfile="$LogDir/backup.log.$(date +%Y%m%d%H%M)"
 fi
 
+log() { printf '%s\n' "$*" | tee -a "$logfile"; }
 
-#
-# Exit
-#
-if [ $result -eq 0 ]; then
-  echo "Backup done at `date`."   | tee -a $logfile
-  exit 0
+umask 077
+lockfile="$BackupTmpDir/.serverbackup.lock"
+if [ -L "$lockfile" ] || { [ -e "$lockfile" ] && { [ ! -f "$lockfile" ] || [ ! -O "$lockfile" ]; }; }; then
+  log "Unsafe backup lock file: $lockfile"
+  exit 1
+fi
+exec 9>>"$lockfile" || { log "Cannot open backup lock: $lockfile"; exit 1; }
+if command -v flock >/dev/null 2>&1; then
+  flock -n 9 || { log "Another backup is already running."; exit 1; }
 else
-  echo "Backup failed at `date`." | tee -a $logfile
+  # Perl locks the inherited open file description; this shell keeps it open.
+  LC_ALL=C perl -MFcntl=:flock -e 'flock(STDIN, LOCK_EX|LOCK_NB) or exit 1' 0<&9 || {
+    log "Another backup is already running (or locking is unavailable)."
+    exit 1
+  }
+fi
+
+bkupdir=$(mktemp -d "$BackupTmpDir/backup.XXXXXXXX") || {
+  log "Cannot create backup work directory."
+  exit 1
+}
+cleanup() {
+  result=$?
+  trap - EXIT
+  if ! rm -rf -- "$bkupdir"; then
+    log "Failed to remove backup work directory: $bkupdir"
+    result=1
+  fi
+  exit "$result"
+}
+trap cleanup EXIT
+trap 'log "Backup interrupted by HUP."; exit 129' HUP
+trap 'log "Backup interrupted by INT."; exit 130' INT
+trap 'log "Backup interrupted by TERM."; exit 143' TERM
+
+if [ -n "$LogDir" ]; then
+  find "$LogDir" -mtime "+$MaxLogAge" -name '*.log.*' -type f -delete
+fi
+
+log "Day Index: $dayidx"
+log "Bucket: $bucket"
+log "Host: $(hostname)"
+log "Backup start at $(date)."
+
+BKUP_DIR=$bkupdir
+BKUP_PREFIX=$bkupdir/$dayidx-
+export BKUP_DIR BKUP_PREFIX
+
+cd "$BASEDIR" || exit 1
+LC_ALL=C tar zcf "${BKUP_PREFIX}backup-scripts.tgz" * || { log "Failed to archive backup scripts."; exit 1; }
+
+BackupCmdDir=${BackupCmdDir:-$BASEDIR/bkcmd.d}
+cd "$BackupCmdDir" || { log "Cannot open backup command directory."; exit 1; }
+for cmd in S*; do
+  [ -f "$cmd" ] || continue
+  if "./$cmd" >>"$logfile" 2>&1; then
+    log "[OK] $cmd"
+  else
+    log "[NG] $cmd"
+  fi
+done
+
+log "Start to synchronize files to cloud."
+Sync=${Sync:-$BASEDIR/sync}
+if "$Sync" "$bkupdir" "$bucket" "$backupdir"; then
+  log "[OK] Sync"
+  log "Backup done at $(date)."
+else
+  log "[NG] Sync"
+  log "Backup failed at $(date)."
   exit 1
 fi

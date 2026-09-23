@@ -57,7 +57,8 @@ Existing `Sync=/backup/serverbackup/sync.gsutil` settings still work; that scrip
 #### Backup commands
 
 bkcmd.d behaves like _rcX.d_. Kick each script with prefix 'S' in this directory.
-${BKUP_PREFIX} is combined backup directory path and file prefix which is the day number (ex _/backup/tmp/3-_).
+${BKUP_DIR} is a private directory created for each run under `BackupTmpDir`.
+${BKUP_PREFIX} adds the day number to that directory (for example, _/backup/tmp/backup.A1B2C3D4/3-_). The run directory is removed when backup exits. Files already present directly under `BackupTmpDir` are left alone.
 
 
 #### Crontab
